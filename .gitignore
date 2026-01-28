@@ -1,0 +1,109 @@
+# Root gitignore for ESP-IDF project
+ESP/
+
+# Build artifacts
+build/
+build/**
+bootloader/build/
+
+# CMake / Ninja
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+*.ninja
+
+# SDK config and generated project files
+sdkconfig
+sdkconfig.*
+project_description.json
+flash_args
+flash_args.*
+flasher_args.json
+app-flash_args
+bootloader-flash_args
+partition-table-flash_args
+
+# Generated binaries and maps
+*.elf
+*.bin
+*.map
+*.hex
+
+# Environment and config
+config.env
+.env
+
+# IDEs and editors
+.vscode/
+.idea/
+*.code-workspace
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+venv/
+env/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Editor swap/temp files
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Logs and caches
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Misc
+.cache/
+.directory
+
+# Build artifacts
+*.o
+*.a
+*.out
+*.exe
+
+# ESP-IDF specific build outputs
+sdkconfig.old
+
+# ESP-IDF dependencies
+/components/.idf/
+**/components/.idf/
+
+# Secrets and sensitive data
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+*.pfx
+secrets/
+.env.local
+.env.*.local
+**/secrets/
