@@ -11,9 +11,8 @@
 // Макрос для перевода номера GPIO в битовую маску
 #define GPIO_BIT(gpio_num) (1ULL << (gpio_num))
 
-// Пины (как у тебя)
+// Пины
 #define LED   GPIO_NUM_13
-
 #define BTN1  26
 #define BTN2  27
 #define BTN3  14
