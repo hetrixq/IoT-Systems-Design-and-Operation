@@ -1,3 +1,11 @@
+/*
+Кейс 1: кодовый замок
+Выполнила бригада №3
+Участники:
+- Павлов Аркадий - ответсвенный за схемы
+- Малков Максим - ответсвенный за код
+- Авдеев Евгений - ответсвенный за отчеты
+*/
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -26,16 +34,19 @@ static const int CODE[] = {1, 2, 3, 4};
 
 #define RELAY_LOCKED_LEVEL 0
 
+// Проверяет, нажата ли кнопка
 static inline bool is_button_pressed(gpio_num_t pin) {
     return gpio_get_level(pin) == 0;
 }
 
+// Проверяет нажатие кнопки с защитой от дребезга
 static bool debounce_button_press(gpio_num_t pin) {
     if (!is_button_pressed(pin)) return false;
     vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_MS));
     return is_button_pressed(pin);
 }
 
+// Ожидает отпускания кнопки
 static void wait_button_release(gpio_num_t pin) {
     while (is_button_pressed(pin)) {
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -43,6 +54,7 @@ static void wait_button_release(gpio_num_t pin) {
     vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_MS));
 }
 
+// Определяет номер нажатой кнопки (1-4) или возвращает 0
 static int get_button_number(void) {
     if (debounce_button_press(BTN1)) {
         wait_button_release(BTN1);
@@ -63,8 +75,10 @@ static int get_button_number(void) {
     return 0;
 }
 
+// Включает светодиод (дверь закрыта)
 static inline void set_locked_led(void) { gpio_set_level(LED, 1); }
 
+// Открывает дверь на 10 секунд с миганием светодиода
 static void open_door(void) {
     gpio_set_level(RELAY, !RELAY_LOCKED_LEVEL);
 
@@ -139,7 +153,6 @@ void app_main(void) {
             open_door();
         } else {
             printf("CODE FAIL\n");
-            set_locked_led();
         }
     }
 }
