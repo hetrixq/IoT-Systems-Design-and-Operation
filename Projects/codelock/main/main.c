@@ -15,24 +15,26 @@
 
 #define GPIO_BIT(gpio_num) (1ULL << (gpio_num))
 
-#define LED GPIO_NUM_13
+// Пины GPIO
+#define LED GPIO_NUM_13    // Светодиод индикации состояния
+#define BTN1 26            // Кнопка 1
+#define BTN2 27            // Кнопка 2
+#define BTN3 14            // Кнопка 3
+#define BTN4 12            // Кнопка 4
+#define RELAY GPIO_NUM_15  // Реле управления замком
 
-#define BTN1 26
-#define BTN2 27
-#define BTN3 14
-#define BTN4 12
+// Временные константы
+#define OPEN_TIME_MS 10000     // Время открытия двери (10 секунд)
+#define BLINK_PERIOD_MS 300    // Период мигания светодиода
+#define DEBOUNCE_MS 40         // Задержка для устранения дребезга кнопок
+#define INPUT_TIMEOUT_MS 5000  // Таймаут сброса ввода (5 секунд)
 
-#define RELAY GPIO_NUM_15
-
-#define OPEN_TIME_MS 10000
-#define BLINK_PERIOD_MS 300
-#define DEBOUNCE_MS 40
-#define INPUT_TIMEOUT_MS 5000
-
+// Код доступа
 static const int CODE[] = {1, 2, 3, 4};
 #define CODE_LEN (sizeof(CODE) / sizeof(CODE[0]))
 
-#define RELAY_LOCKED_LEVEL 0
+// Конфигурация реле
+#define RELAY_LOCKED_LEVEL 0  // Уровень GPIO для блокировки замка
 
 // Проверяет, нажата ли кнопка
 static inline bool is_button_pressed(gpio_num_t pin) {
@@ -94,6 +96,7 @@ static void open_door(void) {
 }
 
 void app_main(void) {
+    // Инициализация GPIO
     gpio_config_t btn_cfg = {
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_INPUT,
@@ -118,6 +121,7 @@ void app_main(void) {
     while (1) {
         int key = get_button_number();
 
+        // Проверка таймаута ввода: сбросить, если долго не было нажатий
         int64_t now = xTaskGetTickCount();
         if (input_digit_index > 0 &&
             (now - last_input_tick) > pdMS_TO_TICKS(INPUT_TIMEOUT_MS)) {
@@ -138,6 +142,7 @@ void app_main(void) {
             continue;
         }
 
+        // Проверяем правильность введенного кода
         bool code_ok = true;
         for (int i = 0; i < (int)CODE_LEN; i++) {
             if (input[i] != CODE[i]) {
