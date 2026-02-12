@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "author": "Anonymous maker",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": -4.76,
+      "attrs": { "builder": "esp-idf" }
+    },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd1",
+      "top": -41.6,
+      "left": 188,
+      "attrs": { "pins": "i2c" }
+    },
+    { "type": "board-bmp180", "id": "bmp1", "top": 15.04, "left": -105.34, "attrs": {} },
+    { "type": "wokwi-mpu6050", "id": "imu1", "top": 147.82, "left": 117.52, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "lcd1:SDA", "esp:21", "green", [ "h-19.2", "v19.4" ] ],
+    [ "lcd1:SCL", "esp:22", "green", [ "h-19.2", "v-18.9" ] ],
+    [ "esp:21", "imu1:SDA", "green", [ "h0" ] ],
+    [ "esp:22", "imu1:SCL", "green", [ "h0" ] ],
+    [ "bmp1:SCL", "esp:22", "green", [ "h19.2", "v-47.81", "h134.4", "v48" ] ],
+    [ "bmp1:SDA", "esp:21", "green", [ "h19.2", "v-57.41", "h134.4", "v86.4" ] ],
+    [ "esp:3V3", "bmp1:3.3V", "red", [ "h-9.45", "v28.8" ] ],
+    [ "esp:GND.2", "bmp1:GND", "black", [ "v-28.8", "h-115.2", "v28.61" ] ],
+    [ "esp:5V", "imu1:VCC", "red", [ "v19.2", "h211.35", "v-67.2" ] ],
+    [ "esp:GND.2", "imu1:GND", "black", [ "h19.2", "v96", "h67.12" ] ],
+    [ "esp:GND.2", "lcd1:GND", "black", [ "v0" ] ],
+    [ "esp:5V", "lcd1:VCC", "red", [ "v19.2", "h105.75", "v-220.9" ] ]
+  ],
+  "dependencies": {}
+}
