@@ -107,3 +107,6 @@ secrets/
 .env.local
 .env.*.local
 **/secrets/
+
+# Logic analyzer output
+*.vcd

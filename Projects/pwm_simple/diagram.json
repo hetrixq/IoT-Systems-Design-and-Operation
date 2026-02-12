@@ -2,7 +2,14 @@
   "version": 1,
   "author": "Arkady P.",
   "editor": "wokwi",
-  "parts": [ { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} } ],
-  "connections": [ [ "esp:TX0", "$serialMonitor:RX", "", [] ], [ "esp:RX0", "$serialMonitor:TX", "", [] ] ],
+  "parts": [ { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} }
+, { "type": "wokwi-logic-analyzer", "id": "logic1", "top": -66.85, "left": 153.6, "attrs": {} }
+  ],
+  "connections": [
+	  [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+	  [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+	  [ "esp:D2", "logic1:D0", "green", [ "h33.64", "v-220.8" ] ],
+	  [ "logic1:GND", "esp:GND.2", "black", [ "h0" ] ]
+  ],
   "dependencies": {}
 }
