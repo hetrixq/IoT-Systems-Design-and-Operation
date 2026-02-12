@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "author": "Arkady P.",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0.6, "left": -0.6, "attrs": {} },
+    {
+      "type": "board-ds18b20",
+      "id": "temp1",
+      "top": -87.53,
+      "left": 109.68,
+      "attrs": {
+        "deviceID": "111111111111",
+        "minTemp": "-20",
+        "maxTemp": "100",
+        "tempWaveFreq": "0.03",
+        "tempWaveForm": "triangle"
+      }
+    },
+    {
+      "type": "board-ds18b20",
+      "id": "temp2",
+      "top": -87.53,
+      "left": 157.68,
+      "attrs": {
+        "deviceID": "222222222222",
+        "minTemp": "-20",
+        "maxTemp": "100",
+        "tempWaveFreq": "0.03",
+        "tempWaveForm": "square"
+      }
+    },
+    {
+      "type": "board-ds18b20",
+      "id": "temp3",
+      "top": -87.53,
+      "left": 205.68,
+      "attrs": {
+        "deviceID": "333333333333",
+        "minTemp": "-20",
+        "maxTemp": "100",
+        "tempWaveFreq": "0.03",
+        "tempWaveForm": "sine"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 61.55,
+      "left": 115.2,
+      "rotate": 270,
+      "attrs": { "value": "4700" }
+    },
+    {
+      "type": "board-ds18b20",
+      "id": "temp4",
+      "top": -87.53,
+      "left": 253.68,
+      "attrs": {
+        "deviceID": "444444444444",
+        "minTemp": "-20",
+        "maxTemp": "100",
+        "tempWaveFreq": "0.1",
+        "tempWaveForm": "triangle"
+      }
+    },
+    {
+      "type": "board-ds18b20",
+      "id": "temp5",
+      "top": -87.53,
+      "left": 301.68,
+      "attrs": {
+        "deviceID": "555555555555",
+        "minTemp": "0",
+        "maxTemp": "90",
+        "tempWaveFreq": "0.017",
+        "tempWaveForm": "sine"
+      }
+    },
+    {
+      "type": "board-ds18b20",
+      "id": "temp6",
+      "top": -87.53,
+      "left": 349.68,
+      "attrs": { "deviceID": "666666666666" }
+    },
+    {
+      "type": "board-ds18b20",
+      "id": "temp8",
+      "top": -87.53,
+      "left": 397.68,
+      "attrs": { "deviceID": "888888888888" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+
+    [ "temp1:GND", "esp:GND.2", "black", [ "v28.8", "h-120" ] ],
+    [ "temp1:VCC", "esp:3V3", "red", [ "v38.4", "h-163.2", "v29.4" ] ],
+    [ "temp1:DQ", "esp:4", "green", [ "v9.6", "h-120" ] ],
+
+    [ "r1:1", "esp:3V3", "red", [ "v0" ] ],
+    [ "r1:2", "temp1:DQ", "green", [ "h27.6", "v0", "h19.2" ] ],
+
+    [ "temp2:GND", "temp1:GND", "black", [ "v28.8", "h-48" ] ],
+    [ "temp2:VCC", "temp1:VCC", "red", [ "v19.2", "h-48" ] ],
+    [ "temp2:DQ", "temp1:DQ", "green", [ "v9.6", "h-48" ] ],
+
+    [ "temp3:GND", "temp2:GND", "black", [ "v28.8", "h-48" ] ],
+    [ "temp3:VCC", "temp2:VCC", "red", [ "v19.2", "h-48" ] ],
+    [ "temp3:DQ", "temp2:DQ", "green", [ "v9.6", "h-48" ] ],
+
+    [ "temp4:GND", "temp3:GND", "black", [ "v28.8", "h-48" ] ],
+    [ "temp4:VCC", "temp3:VCC", "red", [ "v19.2", "h-48" ] ],
+    [ "temp4:DQ", "temp3:DQ", "green", [ "v9.6", "h-48" ] ],
+
+    [ "temp5:GND", "temp4:GND", "black", [ "v28.8", "h-48" ] ],
+    [ "temp5:VCC", "temp4:VCC", "red", [ "v19.2", "h-48" ] ],
+    [ "temp5:DQ", "temp4:DQ", "green", [ "v9.6", "h-48" ] ],
+
+    [ "temp6:GND", "temp5:GND", "black", [ "v28.8", "h-48" ] ],
+    [ "temp6:VCC", "temp5:VCC", "red", [ "v19.2", "h-48" ] ],
+    [ "temp6:DQ", "temp5:DQ", "green", [ "v9.6", "h-48" ] ],
+
+    [ "temp8:GND", "temp6:GND", "black", [ "v28.8", "h-48" ] ],
+    [ "temp8:VCC", "temp6:VCC", "red", [ "v19.2", "h-48" ] ],
+    [ "temp8:DQ", "temp6:DQ", "green", [ "v9.6", "h-48" ] ]
+  ],
+  "dependencies": {}
+}
