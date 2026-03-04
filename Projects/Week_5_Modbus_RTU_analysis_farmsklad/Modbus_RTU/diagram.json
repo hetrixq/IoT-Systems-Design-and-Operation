@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "author": "Arkady P.",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -9.6, "left": -4.76, "attrs": {} },
+    {
+      "type": "wokwi-rgb-led",
+      "id": "rgb",
+      "top": 61.6,
+      "left": 241.1,
+      "attrs": { "common": "cathode" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rR",
+      "top": 120,
+      "left": 190,
+      "attrs": { "resistance": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rG",
+      "top": 160,
+      "left": 190,
+      "attrs": { "resistance": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rB",
+      "top": 200,
+      "left": 190,
+      "attrs": { "resistance": "220" }
+    },
+    { "type": "wokwi-max485", "id": "rs485", "top": 60, "left": 320, "attrs": {} }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "green", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "green", [] ],
+    [ "esp:GND", "rgb:COM", "black", [] ],
+    [ "esp:33", "rR:1", "red", [ "h-61.81", "v173.2", "h249.6", "v-133.55" ] ],
+    [ "rR:2", "rgb:R", "red", [] ],
+    [ "esp:25", "rG:1", "green", [ "h-52.21", "v154", "h230.4", "v-83.95" ] ],
+    [ "rG:2", "rgb:G", "green", [] ],
+    [ "esp:26", "rB:1", "blue", [ "h-42.61", "v134.8", "h211.2", "v-34.35" ] ],
+    [ "rB:2", "rgb:B", "blue", [] ],
+    [ "esp:5V", "rs485:VCC", "red", [] ],
+    [ "esp:GND", "rs485:GND", "black", [] ],
+    [ "esp:4", "rs485:RE", "orange", [] ],
+    [ "esp:4", "rs485:DE", "orange", [] ],
+    [ "esp:17", "rs485:DI", "purple", [] ],
+    [ "rs485:RO", "esp:16", "purple", [] ]
+  ],
+  "dependencies": {}
+}
