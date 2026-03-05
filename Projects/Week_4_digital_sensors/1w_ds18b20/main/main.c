@@ -4,9 +4,6 @@
 - Павлов Аркадий - ответственный за схемы
 - Малков Максим - ответственный за код
 - Авдеев Евгений - ответственный за отчеты
-
-DS18B20 1-Wire Temperature Sensor Example (GPIO bit-bang)
-Uses esp-idf-lib/ds18x20 for Wokwi compatibility
 */
 #include <stdio.h>
 #include <freertos/FreeRTOS.h>
