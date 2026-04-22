@@ -1,0 +1,26 @@
+Week 9 / 4.3 MQTT clients topic contract
+
+Base namespace:
+- iot_practice/USER_ID/#
+
+Topics:
+- iot_practice/USER_ID/lamp
+  Payload: on | off
+
+- iot_practice/USER_ID/lamp/mode
+  Payload: dimmer | rgb
+
+- iot_practice/USER_ID/lamp/value
+  Payload: integer 0..100
+
+- iot_practice/USER_ID/lamp/color
+  Payload formats:
+    - rgba(R,G,B,A), e.g. rgba(255,120,40,1.0)
+    - HEX #RRGGBB, e.g. #FF7828
+
+- iot_practice/USER_ID/status
+  Payload example: {"source":"fake_lamp","mode":"rgb","lamp":"on"}
+
+Compatibility rules:
+- MQTTX desktop, fake_lamp, and mobile client must use identical topic names.
+- Client apps should publish retained state for `lamp`, `lamp/mode`, and `lamp/value`.

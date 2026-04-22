@@ -1,0 +1,39 @@
+Week9/Week10 MQTT compatibility matrix
+
+Namespace rule:
+- Base prefix for all lab traffic: iot_practice/USER_ID/#
+
+Canonical topics:
+- iot_practice/USER_ID/lamp
+  - publishers: mqtt_cli_lab, mqtt_clients_lab, mqtt_lamp, dynamic_lighting
+  - payload: on | off
+
+- iot_practice/USER_ID/lamp/value
+  - publishers: mqtt_cli_lab, mqtt_clients_lab, mqtt_lamp, dynamic_lighting
+  - payload: integer 0..100
+
+- iot_practice/USER_ID/lamp/mode
+  - publishers: mqtt_cli_lab, mqtt_clients_lab, dynamic_lighting
+  - payload: dimmer | rgb
+
+- iot_practice/USER_ID/lamp/color
+  - publishers: mqtt_cli_lab, mqtt_clients_lab, dynamic_lighting
+  - payload: rgba(R,G,B,A) or #RRGGBB
+
+- iot_practice/USER_ID/servers/<name>
+  - publishers: python_mqtt_client/skynet_publish.py
+  - subscribers: python_mqtt_client/sensor_client.py
+  - payload: md5(server:USER_ID)[:6]
+
+- iot_practice/USER_ID/sensors
+  - publishers: python_mqtt_client/sensor_client.py
+  - payload: JSON {temperature, humidity, luminosity, ts}
+
+Scene mapping for dynamic lighting:
+- iot_practice/USER_ID/lamp/scene = adaptive | meeting | relax | emergency
+
+Acceptance checklist:
+[ ] All clients subscribe inside iot_practice/USER_ID/# only.
+[ ] No alternative prefixes are used in app configs.
+[ ] Lamp control topics work identically for fake_lamp and ESP32 projects.
+[ ] Python server topics do not collide with lamp topics.

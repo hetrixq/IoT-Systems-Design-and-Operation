@@ -1,0 +1,41 @@
+Week 9 / 4.2 MQTT CLI experiments
+User ID: __________________
+Broker host: _____________
+Broker port: _____________
+Date: ____________________
+
+[1] Topic case sensitivity
+- Command(s):
+- Expected:
+- Actual:
+- Status (pass/fail):
+
+[2] Wildcard in publish topic (negative)
+- Command(s):
+- Expected:
+- Actual:
+- Status (pass/fail):
+
+[3] Leading/trailing slash behavior
+- Command(s):
+- Expected:
+- Actual:
+- Status (pass/fail):
+
+[4] stdin publish with -l
+- Command(s):
+- Expected:
+- Actual:
+- Status (pass/fail):
+
+[5] Retained message behavior
+- Command(s):
+- Expected:
+- Actual:
+- Status (pass/fail):
+
+[6] Last Will and Testament (LWT)
+- Command(s):
+- Expected:
+- Actual:
+- Status (pass/fail):
