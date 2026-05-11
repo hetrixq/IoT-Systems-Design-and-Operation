@@ -22,6 +22,17 @@ services:
       iot_net:
         ipv4_address: 172.30.0.10
 
+  tcp_echo:
+    build:
+      context: ./tcp_echo
+      dockerfile: Dockerfile
+    container_name: tcp_echo
+    ports:
+      - 12345:12345
+    networks:
+      iot_net:
+        ipv4_address: 172.30.0.20
+
 volumes:
   velxio-data:
   velxio-arduino-libs:
