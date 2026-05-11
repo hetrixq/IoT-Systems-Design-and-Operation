@@ -1,0 +1,34 @@
+services:
+  velxio:
+    image: ghcr.io/davidmonterocrespo24/velxio:master
+    ports:
+      - 3080:80
+    volumes:
+      - velxio-data:/app/data
+      - velxio-arduino-libs:/root/.arduino15
+    networks:
+      - iot_net
+
+  emqx:
+    image: emqx/emqx-enterprise:latest
+    container_name: emqx
+    ports:
+      - 1883:1883
+      - 8083:8083
+      - 8084:8084
+      - 8883:8883
+      - 18083:18083
+    networks:
+      iot_net:
+        ipv4_address: 172.30.0.10
+
+volumes:
+  velxio-data:
+  velxio-arduino-libs:
+
+networks:
+  iot_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
