@@ -7,6 +7,8 @@ services:
       - velxio-data:/app/data
       - velxio-arduino-libs:/root/.arduino15
       - velxio-installed-libs:/root/Arduino
+      - velxio-ccache:/var/cache/ccache
+      - velxio-build:/var/lib/velxio-build
     networks:
       - iot_net
 
@@ -38,6 +40,8 @@ volumes:
   velxio-data:
   velxio-arduino-libs:
   velxio-installed-libs:
+  velxio-ccache:
+  velxio-build:
 
 networks:
   iot_net:
