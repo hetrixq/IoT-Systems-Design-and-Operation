@@ -6,6 +6,7 @@ services:
     volumes:
       - velxio-data:/app/data
       - velxio-arduino-libs:/root/.arduino15
+      - velxio-installed-libs:/root/Arduino
     networks:
       - iot_net
 
@@ -36,6 +37,7 @@ services:
 volumes:
   velxio-data:
   velxio-arduino-libs:
+  velxio-installed-libs:
 
 networks:
   iot_net:
