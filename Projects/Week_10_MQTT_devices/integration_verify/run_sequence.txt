@@ -1,0 +1,35 @@
+Week9/Week10 run sequence (no README mode)
+
+Preparation:
+1) Start MQTT broker (local or remote).
+2) Set USER_ID and ensure all clients use iot_practice/USER_ID/#.
+
+Execution order:
+1. Week9 wifi_connect
+   - flash and monitor logs
+   - verify reconnect and successful connection counter
+
+2. Week9 mqtt_cli_lab
+   - run mosquitto_experiments.sh
+   - fill experiment_results.txt
+
+3. Week9 mqtt_clients_lab
+   - execute test payload sequence from fake_lamp_test_payloads.json
+   - mark checks in client_matrix.txt
+
+4. Week10 python_mqtt_client
+   - install deps: pip install -r requirements.txt
+   - run sensor_client.py
+   - run skynet_publish.py for sample server list
+
+5. Week10 mqtt_lamp
+   - flash and monitor
+   - verify lamp on/off, lamp/value, status indication, boot reset
+
+6. Week10 dynamic_lighting
+   - flash and monitor
+   - verify dimmer/rgb, rgba+hex color, and 4 scenes (adaptive/meeting/relax/emergency)
+
+Final gate:
+- Run integration_verify/smoke_check.sh
+- Compare topics against topic_compatibility_matrix.txt
