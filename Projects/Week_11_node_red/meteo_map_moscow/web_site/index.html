@@ -1,0 +1,30 @@
+<!--
+Выполнила бригада №3
+Участники:
+- Павлов Аркадий - ответственный за схемы
+- Малков Максим - ответственный за код
+- Авдеев Евгений - ответственный за отчеты
+-->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Метеомониторинг: Москва</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=b441179f-f3cd-45c6-badb-141a8f728f98"></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>Метеомониторинг: Москва</h1>
+    <p id="status">Статус MQTT: подключение...</p>
+  </header>
+  <main class="app-main">
+    <div id="map"></div>
+  </main>
+
+  <script src="js/paho-mqtt-min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

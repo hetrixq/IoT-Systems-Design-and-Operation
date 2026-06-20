@@ -1,0 +1,174 @@
+[
+  {
+    "id": "tab_eco_5404",
+    "type": "tab",
+    "label": "Eco Monitoring 5404",
+    "disabled": false,
+    "info": "Поток обработки телеметрии экологических станций"
+  },
+  {
+    "id": "mqtt_in_eco",
+    "type": "mqtt in",
+    "z": "tab_eco_5404",
+    "name": "eco telemetry in",
+    "topic": "iot_practice/+/eco",
+    "qos": "1",
+    "datatype": "auto-detect",
+    "broker": "broker_emqx_eco",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 170,
+    "y": 140,
+    "wires": [
+      [
+        "json_parse_eco"
+      ]
+    ]
+  },
+  {
+    "id": "json_parse_eco",
+    "type": "json",
+    "z": "tab_eco_5404",
+    "name": "parse json",
+    "property": "payload",
+    "action": "",
+    "pretty": false,
+    "x": 370,
+    "y": 140,
+    "wires": [
+      [
+        "fn_validate_eco"
+      ]
+    ]
+  },
+  {
+    "id": "fn_validate_eco",
+    "type": "function",
+    "z": "tab_eco_5404",
+    "name": "validate + classify PM2.5",
+    "func": "const data = msg.payload;\nif (!data || typeof data !== \"object\") {\n    return null;\n}\n\nconst toNum = (v) => {\n    const n = Number(v);\n    return Number.isFinite(n) ? n : null;\n};\n\nconst lat = toNum(data.lat);\nconst lon = toNum(data.lon);\nconst temperature = toNum(data.temperature);\nconst humidity = toNum(data.humidity);\nconst pm25 = toNum(data.pm25);\n\nif (lat === null || lon === null || temperature === null || humidity === null || pm25 === null) {\n    return null;\n}\n\nconst stationId = (typeof data.deviceId === \"string\" && data.deviceId.trim())\n    ? data.deviceId.trim()\n    : `Eco-${(msg.topic || \"\").split(\"/\")[1] || \"unknown\"}`;\n\nlet pmState = \"normal\";\nif (pm25 > 35) {\n    pmState = \"critical\";\n} else if (pm25 > 12) {\n    pmState = \"elevated\";\n}\n\nmsg.payload = {\n    ...data,\n    stationId,\n    pmState,\n    receivedAt: new Date().toISOString()\n};\n\nmsg.alert = (pmState === \"critical\");\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 610,
+    "y": 140,
+    "wires": [
+      [
+        "debug_valid_eco",
+        "switch_alert_eco"
+      ]
+    ]
+  },
+  {
+    "id": "debug_valid_eco",
+    "type": "debug",
+    "z": "tab_eco_5404",
+    "name": "validated telemetry",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 860,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "switch_alert_eco",
+    "type": "switch",
+    "z": "tab_eco_5404",
+    "name": "critical only",
+    "property": "alert",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "true"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 1,
+    "x": 840,
+    "y": 180,
+    "wires": [
+      [
+        "fn_build_alert",
+        "debug_alert_eco"
+      ]
+    ]
+  },
+  {
+    "id": "fn_build_alert",
+    "type": "function",
+    "z": "tab_eco_5404",
+    "name": "build alert payload",
+    "func": "const stationId = msg.payload.stationId || \"Eco-unknown\";\nconst pm25 = Number(msg.payload.pm25);\nmsg.topic = \"iot_practice/5404/eco/alert\";\nmsg.payload = {\n    stationId,\n    pm25,\n    level: \"critical\",\n    message: `Критическое загрязнение воздуха: ${pm25.toFixed(1)} мкг/м³`,\n    ts: new Date().toISOString()\n};\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 180,
+    "wires": [
+      [
+        "mqtt_out_alert"
+      ]
+    ]
+  },
+  {
+    "id": "mqtt_out_alert",
+    "type": "mqtt out",
+    "z": "tab_eco_5404",
+    "name": "eco alert out",
+    "topic": "",
+    "qos": "1",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "broker_emqx_eco",
+    "x": 1280,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "debug_alert_eco",
+    "type": "debug",
+    "z": "tab_eco_5404",
+    "name": "critical alerts",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": true,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "payload.message",
+    "statusType": "msg",
+    "x": 1050,
+    "y": 240,
+    "wires": []
+  },
+  {
+    "id": "broker_emqx_eco",
+    "type": "mqtt-broker",
+    "name": "emqx_local",
+    "broker": "172.30.0.10",
+    "port": "1883",
+    "clientid": "nodered-week11-eco-5404",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true
+  }
+]

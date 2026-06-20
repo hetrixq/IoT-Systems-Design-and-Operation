@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "author": "Brigade 3",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_temp",
+      "top": -50,
+      "left": 210,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_humidity",
+      "top": 60,
+      "left": 210,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_pm25",
+      "top": 150,
+      "left": 200,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+
+    [ "pot_temp:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "pot_temp:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "pot_temp:SIG", "esp:35", "green", [ "v0" ] ],
+
+    [ "pot_humidity:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "pot_humidity:GND", "esp:GND.2", "black", [ "v0" ] ],
+    [ "pot_humidity:SIG", "esp:32", "blue", [ "v0" ] ],
+
+    [ "pot_pm25:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "pot_pm25:GND", "esp:GND.3", "black", [ "v0" ] ],
+    [ "pot_pm25:SIG", "esp:34", "yellow", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
