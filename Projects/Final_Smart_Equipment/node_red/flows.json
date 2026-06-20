@@ -1,0 +1,660 @@
+[
+  {
+    "id": "sg_tab001",
+    "type": "tab",
+    "label": "Smart Gym",
+    "disabled": false,
+    "info": "MVP умной гантели: status, exercise, геймификация, анти-кража"
+  },
+  {
+    "id": "sg_mqttbrk",
+    "type": "mqtt-broker",
+    "name": "EMQX Smart Gym",
+    "broker": "172.30.0.10",
+    "port": "1883",
+    "clientid": "nodered_smartgym",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthRetain": "false",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeRetain": "false",
+    "credentials": {}
+  },
+  {
+    "id": "sg_mqtt_st",
+    "type": "mqtt in",
+    "z": "sg_tab001",
+    "name": "smartgym status",
+    "topic": "smartgym/+/status",
+    "qos": "1",
+    "datatype": "auto-detect",
+    "broker": "sg_mqttbrk",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 120,
+    "y": 120,
+    "wires": [
+      [
+        "sg_fn_stat"
+      ]
+    ]
+  },
+  {
+    "id": "sg_mqtt_ex",
+    "type": "mqtt in",
+    "z": "sg_tab001",
+    "name": "smartgym exercise",
+    "topic": "smartgym/+/exercise",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "sg_mqttbrk",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 120,
+    "y": 220,
+    "wires": [
+      [
+        "sg_fn_exer"
+      ]
+    ]
+  },
+  {
+    "id": "sg_mqtt_dock",
+    "type": "mqtt in",
+    "z": "sg_tab001",
+    "name": "smartgym dock",
+    "topic": "smartgym/+/dock",
+    "qos": "1",
+    "datatype": "auto-detect",
+    "broker": "sg_mqttbrk",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 120,
+    "y": 320,
+    "wires": [
+      [
+        "sg_fn_dock"
+      ]
+    ]
+  },
+  {
+    "id": "sg_fn_stat",
+    "type": "function",
+    "z": "sg_tab001",
+    "name": "handle status",
+    "func": "// Обработка smartgym/<deviceId>/status: обновление devices и theft alert.\nfunction weekStartMs() {\n    const d = new Date();\n    d.setHours(0, 0, 0, 0);\n    const day = d.getDay();\n    const diff = d.getDate() - day + (day === 0 ? -6 : 1);\n    d.setDate(diff);\n    return d.getTime();\n}\n\nconst topic = msg.topic || '';\nconst parts = topic.split('/');\nif (parts.length < 3 || parts[0] !== 'smartgym') {\n    return null;\n}\nconst deviceId = parts[1];\n\nlet payload;\ntry {\n    const raw = Buffer.isBuffer(msg.payload) ? msg.payload.toString('utf8') : msg.payload;\n    if (typeof raw === 'string') {\n        const t = raw.trim();\n        if (t.startsWith('{')) {\n            payload = JSON.parse(t);\n        } else {\n            // Поддержка простого текстового статуса: \"online\"/\"offline\"/\"workshift\".\n            payload = { status: t };\n        }\n    } else {\n        payload = raw;\n    }\n} catch (e) {\n    node.warn('status JSON parse error: ' + e.message);\n    return null;\n}\n\nconst status = payload.status;\nif (!status) return null;\n\nconst devices = global.get('devices') || {};\nconst alerts = global.get('alerts') || [];\nconst prev = devices[deviceId] || {};\nconst now = Date.now();\nconst weekStart = weekStartMs();\nconst userId = payload.user_id || prev.user_id || null;\n\n// Новая сессия workshift — инкремент sessions у пользователя.\nif (status === 'workshift' && prev.status !== 'workshift' && userId) {\n    const users = global.get('users') || {};\n    const u = users[userId] || {\n        total_reps: 0,\n        points: 0,\n        sessions: 0,\n        sessions_this_week: 0,\n        week_start: weekStart,\n        last_rep_at: 0\n    };\n    if (u.week_start !== weekStart) {\n        u.sessions_this_week = 0;\n        u.week_start = weekStart;\n    }\n    u.sessions += 1;\n    u.sessions_this_week += 1;\n    users[userId] = u;\n    global.set('users', users);\n}\n\nconst endedWorkshift = prev.status === 'workshift' && status === 'online';\n\nconst next = {\n    deviceId,\n    status,\n    user_id: status === 'workshift' ? userId : (prev.user_id || null),\n    on_dock: prev.on_dock === true,\n    idle_since: prev.idle_since || 0,\n    last_seen: now,\n    updated_at: new Date(now).toISOString(),\n    had_session: prev.had_session || status === 'workshift' || (prev.reps_in_session || 0) > 0,\n    last_workshift_end: endedWorkshift ? now : (prev.last_workshift_end || 0),\n    last_rep_at: prev.last_rep_at || 0,\n    reps_in_session: status === 'workshift'\n        ? (prev.status === 'workshift' ? (prev.reps_in_session || 0) : 0)\n        : 0\n};\n\ndevices[deviceId] = next;\nglobal.set('devices', devices);\n\nlet alertsChanged = false;\nlet updatedAlerts = [...alerts];\n\nif (status === 'offline') {\n    updatedAlerts = updatedAlerts.filter(\n        a => !(a.type === 'theft_alert' && a.deviceId === deviceId && a.active)\n    );\n    updatedAlerts.unshift({\n        type: 'theft_alert',\n        deviceId,\n        message: 'ТРЕВОГА: ' + deviceId + ' offline (возможная кража)',\n        timestamp: now,\n        active: true\n    });\n    alertsChanged = true;\n} else {\n    updatedAlerts = updatedAlerts.map(a => {\n        if (a.type === 'theft_alert' && a.deviceId === deviceId && a.active) {\n            alertsChanged = true;\n            return { ...a, active: false, cleared_at: now };\n        }\n        return a;\n    });\n}\n\nif (alertsChanged) {\n    global.set('alerts', updatedAlerts.slice(0, 20));\n}\n\nmsg.deviceId = deviceId;\nmsg.status = status;\nmsg.refresh = true;\n\n// Второй выход — popup на Dashboard 2.0 при событии кражи (offline/LWT).\nconst theftNotify = status === 'offline'\n    ? {\n        payload: 'ТРЕВОГА: ' + deviceId + ' offline (возможная кража)',\n        show: true,\n        ui_update: {\n            color: 'red',\n            displayTime: 15,\n            position: 'center center',\n            allowDismiss: true,\n            dismissText: 'OK',\n            showCountdown: true\n        }\n    }\n    : null;\n\nreturn [msg, theftNotify];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 340,
+    "y": 120,
+    "wires": [
+      [
+        "sg_fn_sync_idle",
+        "sg_dbg_st"
+      ],
+      [
+        "sg_notif_theft"
+      ]
+    ]
+  },
+  {
+    "id": "sg_fn_exer",
+    "type": "function",
+    "z": "sg_tab001",
+    "name": "handle exercise",
+    "func": "// Обработка lift_rep: привязка к user_id из активной сессии устройства.\nconst topic = msg.topic || '';\nconst parts = topic.split('/');\nif (parts.length < 3 || parts[0] !== 'smartgym') {\n    return null;\n}\nconst deviceId = parts[1];\n\nlet payload;\ntry {\n    const raw = Buffer.isBuffer(msg.payload) ? msg.payload.toString('utf8') : msg.payload;\n    if (typeof raw === 'string') {\n        payload = JSON.parse(raw.trim());\n    } else {\n        payload = raw;\n    }\n} catch (e) {\n    node.warn('exercise JSON parse error: ' + e.message);\n    return null;\n}\n\nif (!payload || payload.event !== 'lift_rep') {\n    return null;\n}\n\nconst devices = global.get('devices') || {};\nconst device = devices[deviceId] || {};\nconst userId = device.user_id;\n\nif (!userId) {\n    node.warn('lift_rep без активного user_id для ' + deviceId);\n    return null;\n}\n\nconst repDelta = Number(payload.rep_delta) || 1;\nconst POINTS_PER_REP = 10;\nconst now = Date.now();\n\nfunction weekStartMs() {\n    const d = new Date();\n    d.setHours(0, 0, 0, 0);\n    const day = d.getDay();\n    const diff = d.getDate() - day + (day === 0 ? -6 : 1);\n    d.setDate(diff);\n    return d.getTime();\n}\n\nconst users = global.get('users') || {};\nconst weekStart = weekStartMs();\nconst u = users[userId] || {\n    total_reps: 0,\n    points: 0,\n    sessions: 0,\n    sessions_this_week: 0,\n    week_start: weekStart,\n    last_rep_at: 0\n};\n\nif (u.week_start !== weekStart) {\n    u.sessions_this_week = 0;\n    u.week_start = weekStart;\n}\n\nu.total_reps += repDelta;\nu.points += repDelta * POINTS_PER_REP;\nu.last_rep_at = now;\nusers[userId] = u;\nglobal.set('users', users);\n\ndevices[deviceId] = {\n    ...device,\n    had_session: true,\n    last_rep_at: now,\n    reps_in_session: (device.reps_in_session || 0) + repDelta\n};\nglobal.set('devices', devices);\n\nmsg.deviceId = deviceId;\nmsg.userId = userId;\nmsg.repDelta = repDelta;\nmsg.refresh = true;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 340,
+    "y": 220,
+    "wires": [
+      [
+        "sg_fn_dash",
+        "sg_dbg_ex"
+      ]
+    ]
+  },
+  {
+    "id": "sg_fn_dock",
+    "type": "function",
+    "z": "sg_tab001",
+    "name": "handle dock",
+    "func": "// Обработка smartgym/<deviceId>/dock: состояние «гантель на стойке».\nconst topic = msg.topic || '';\nconst parts = topic.split('/');\nif (parts.length < 3 || parts[0] !== 'smartgym' || parts[2] !== 'dock') {\n    return null;\n}\nconst deviceId = parts[1];\n\nlet payload;\ntry {\n    const raw = Buffer.isBuffer(msg.payload) ? msg.payload.toString('utf8') : msg.payload;\n    payload = typeof raw === 'string' ? JSON.parse(raw.trim()) : raw;\n} catch (e) {\n    node.warn('dock JSON parse error: ' + e.message);\n    return null;\n}\n\nif (payload.on_dock === undefined) {\n    return null;\n}\n\nconst onDock = payload.on_dock === true || payload.on_dock === 'true';\nconst devices = global.get('devices') || {};\nconst prev = devices[deviceId] || {};\nconst now = Date.now();\n\ndevices[deviceId] = {\n    ...prev,\n    deviceId,\n    on_dock: onDock,\n    dock_updated_at: new Date(now).toISOString(),\n    last_seen: now\n};\nglobal.set('devices', devices);\n\nmsg.deviceId = deviceId;\nmsg.on_dock = onDock;\nmsg.refresh = true;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 340,
+    "y": 320,
+    "wires": [
+      [
+        "sg_fn_sync_idle",
+        "sg_dbg_dock"
+      ]
+    ]
+  },
+  {
+    "id": "sg_inj60s",
+    "type": "inject",
+    "z": "sg_tab001",
+    "name": "idle check 60s",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "60",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 400,
+    "wires": [
+      [
+        "sg_fn_sync_idle"
+      ]
+    ]
+  },
+  {
+    "id": "sg_inj_init",
+    "type": "inject",
+    "z": "sg_tab001",
+    "name": "init dashboard",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "1",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 420,
+    "wires": [
+      [
+        "sg_fn_dash"
+      ]
+    ]
+  },
+  {
+    "id": "sg_inj_refresh",
+    "type": "inject",
+    "z": "sg_tab001",
+    "name": "refresh dashboard 5s",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "5",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 160,
+    "y": 500,
+    "wires": [
+      [
+        "sg_fn_dash"
+      ]
+    ]
+  },
+  {
+    "id": "sg_fn_sync_idle",
+    "type": "function",
+    "z": "sg_tab001",
+    "name": "sync idle alerts",
+    "func": "// idle_reminder: online + on_dock=false + прошло IDLE_MS с начала этого состояния.\n// Снимается, если хотя бы одно условие перестало выполняться.\nconst IDLE_MS = 10 * 1000;\nconst now = Date.now();\nconst devices = global.get('devices') || {};\nconst alerts = global.get('alerts') || [];\nlet changed = false;\nlet updated = [...alerts];\n\nfor (const deviceId of Object.keys(devices)) {\n    const d = devices[deviceId];\n    const online = d.status === 'online';\n    const onDock = d.on_dock === true;\n\n    if (online && !onDock) {\n        if (!d.idle_since) {\n            d.idle_since = now;\n        }\n    } else {\n        d.idle_since = 0;\n    }\n    devices[deviceId] = d;\n\n    const shouldAlert = online && !onDock && d.idle_since && (now - d.idle_since >= IDLE_MS);\n    const idx = updated.findIndex(\n        a => a.type === 'idle_reminder' && a.deviceId === deviceId && a.active\n    );\n\n    if (shouldAlert && idx === -1) {\n        updated.unshift({\n            type: 'idle_reminder',\n            deviceId,\n            message: 'Напоминание: уберите гантель ' + deviceId + ' на место',\n            timestamp: now,\n            active: true\n        });\n        changed = true;\n    } else if (!shouldAlert && idx !== -1) {\n        updated[idx] = { ...updated[idx], active: false, cleared_at: now };\n        changed = true;\n    }\n}\n\nglobal.set('devices', devices);\nif (changed) {\n    global.set('alerts', updated.slice(0, 20));\n}\n\nmsg.refresh = true;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 520,
+    "y": 180,
+    "wires": [
+      [
+        "sg_fn_dash"
+      ]
+    ]
+  },
+  {
+    "id": "sg_fn_dash",
+    "type": "function",
+    "z": "sg_tab001",
+    "name": "refresh dashboard",
+    "func": "// Формирование payload для Dashboard 2.0 из global context.\nconst devices = global.get('devices') || {};\nconst users = global.get('users') || {};\nconst alerts = global.get('alerts') || [];\n\nconst deviceRows = Object.values(devices).map(d => ({\n    'Устройство': d.deviceId,\n    'Статус': d.status,\n    'На месте': d.on_dock ? 'да' : 'нет',\n    'Пользователь': d.user_id || '-',\n    'Обновлено': d.updated_at || '-'\n}));\n\nconst leaderRows = Object.entries(users)\n    .map(([id, u]) => ({\n        'Пользователь': id,\n        'Очки': u.points || 0,\n        'Повторения': u.total_reps || 0,\n        'Сессии': u.sessions || 0,\n        'Активный': (u.sessions_this_week || 0) >= 3 ? 'да' : 'нет'\n    }))\n    .sort((a, b) => b['Очки'] - a['Очки']);\n\nconst activeAlerts = alerts.filter(a => a.active);\nconst alertRows = activeAlerts.map(a => ({\n    'Тип': a.type,\n    'Устройство': a.deviceId || '-',\n    'Сообщение': a.message,\n    'Время': new Date(a.timestamp).toLocaleTimeString()\n}));\n\nconst totalReps = Object.values(users).reduce((s, u) => s + (u.total_reps || 0), 0);\nconst totalSessions = Object.values(users).reduce((s, u) => s + (u.sessions || 0), 0);\nconst uniqueUsers = Object.keys(users).length;\nconst avgRepsPerSession = totalSessions > 0\n    ? Math.round((totalReps / totalSessions) * 10) / 10\n    : 0;\n\nconst statsRows = [\n    { 'Метрика': 'Всего повторений', 'Значение': totalReps },\n    { 'Метрика': 'Количество сессий', 'Значение': totalSessions },\n    { 'Метрика': 'Уникальных пользователей', 'Значение': uniqueUsers },\n    { 'Метрика': 'Среднее повторений на сессию', 'Значение': avgRepsPerSession }\n];\n\nconst deviceList = Object.values(devices);\nconst totalDevices = deviceList.length;\nconst busyDevices = deviceList.filter(d => d.status === 'workshift').length;\nconst occupiedPct = totalDevices > 0\n    ? Math.round((busyDevices / totalDevices) * 100)\n    : 0;\n\nreturn [\n    { payload: deviceRows },\n    { payload: leaderRows },\n    { payload: alertRows },\n    { payload: statsRows },\n    {\n        payload: occupiedPct,\n        ui_update: {\n            label: 'Занятость: ' + busyDevices + '/' + totalDevices\n        }\n    }\n];",
+    "outputs": 5,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 780,
+    "y": 220,
+    "wires": [
+      [
+        "sg_tbl_dev"
+      ],
+      [
+        "sg_tbl_ldr"
+      ],
+      [
+        "sg_tbl_alrt"
+      ],
+      [
+        "sg_tbl_sts"
+      ],
+      [
+        "sg_gauge_occ"
+      ]
+    ]
+  },
+  {
+    "id": "sg_dbg_st",
+    "type": "debug",
+    "z": "sg_tab001",
+    "name": "status log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 560,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "sg_dbg_ex",
+    "type": "debug",
+    "z": "sg_tab001",
+    "name": "exercise log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 560,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "id": "sg_dbg_dock",
+    "type": "debug",
+    "z": "sg_tab001",
+    "name": "dock log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 560,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "sg_notif_theft",
+    "type": "ui-notification",
+    "z": "sg_tab001",
+    "ui": "sg_uibase",
+    "name": "уведомление о краже",
+    "position": "center center",
+    "colorDefault": false,
+    "color": "#dc3545",
+    "displayTime": "15",
+    "showCountdown": true,
+    "outputs": 1,
+    "allowDismiss": true,
+    "dismissText": "OK",
+    "allowConfirm": false,
+    "confirmText": "Confirm",
+    "raw": false,
+    "className": "",
+    "x": 1020,
+    "y": 60,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "sg_uibase",
+    "type": "ui-base",
+    "name": "Дашборд Smart Gym",
+    "path": "/dashboard",
+    "appIcon": "",
+    "includeClientData": true,
+    "acceptsClientConfig": [
+      "ui-notification",
+      "ui-control"
+    ],
+    "showPathInSidebar": false,
+    "navigationStyle": "default",
+    "titleBarStyle": "default",
+    "showReconnectNotification": true,
+    "notificationDisplayTime": 1,
+    "showDisconnectNotification": true,
+    "allowInstall": false
+  },
+  {
+    "id": "sg_uitheme",
+    "type": "ui-theme",
+    "name": "Стандартная тема",
+    "ui": "sg_uibase",
+    "colors": {
+      "surface": "#ffffff",
+      "primary": "#0094CE",
+      "bgPage": "#eeeeee",
+      "groupBg": "#ffffff",
+      "groupOutline": "#cccccc"
+    },
+    "sizes": {
+      "density": "comfortable",
+      "pagePadding": "12px",
+      "groupGap": "12px",
+      "groupBorderRadius": "4px",
+      "widgetGap": "12px"
+    }
+  },
+  {
+    "id": "sg_uipage",
+    "type": "ui-page",
+    "name": "Умный зал",
+    "ui": "sg_uibase",
+    "path": "/smart-gym",
+    "icon": "dashboard",
+    "layout": "grid",
+    "theme": "sg_uitheme",
+    "order": 1,
+    "className": "",
+    "visible": true,
+    "disabled": false,
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      },
+      {
+        "name": "Tablet",
+        "px": 576,
+        "cols": 6
+      },
+      {
+        "name": "Small Desktop",
+        "px": 768,
+        "cols": 9
+      },
+      {
+        "name": "Desktop",
+        "px": 1024,
+        "cols": 12
+      }
+    ]
+  },
+  {
+    "id": "sg_grp_occ",
+    "type": "ui-group",
+    "name": "Занятость устройств",
+    "page": "sg_uipage",
+    "width": 4,
+    "height": 5,
+    "order": 0,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "id": "sg_grp_dev",
+    "type": "ui-group",
+    "name": "Устройства",
+    "page": "sg_uipage",
+    "width": 12,
+    "height": 5,
+    "order": 1,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "id": "sg_grp_ldr",
+    "type": "ui-group",
+    "name": "Лидеры",
+    "page": "sg_uipage",
+    "width": 12,
+    "height": 5,
+    "order": 2,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "id": "sg_grp_alt",
+    "type": "ui-group",
+    "name": "Оповещения",
+    "page": "sg_uipage",
+    "width": 12,
+    "height": 5,
+    "order": 3,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "id": "sg_grp_sts",
+    "type": "ui-group",
+    "name": "Статистика",
+    "page": "sg_uipage",
+    "width": 12,
+    "height": 5,
+    "order": 4,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "id": "sg_gauge_occ",
+    "type": "ui-gauge",
+    "z": "sg_tab001",
+    "group": "sg_grp_occ",
+    "name": "gauge занятости",
+    "order": 1,
+    "width": 4,
+    "height": 4,
+    "value": "payload",
+    "valueType": "msg",
+    "gtype": "gauge-half",
+    "gstyle": "needle",
+    "title": "Занятость устройств",
+    "alwaysShowTitle": true,
+    "floatingTitlePosition": "top-left",
+    "units": "%",
+    "icon": "",
+    "prefix": "",
+    "suffix": "%",
+    "min": 0,
+    "max": 100,
+    "segments": [
+      {
+        "color": "#5cb85c",
+        "from": 0
+      },
+      {
+        "color": "#f0ad4e",
+        "from": 50
+      },
+      {
+        "color": "#d9534f",
+        "from": 80
+      }
+    ],
+    "sizeThickness": 16,
+    "sizeGap": 4,
+    "sizeKeyThickness": 8,
+    "styleRounded": true,
+    "styleGlow": false,
+    "className": "",
+    "x": 1020,
+    "y": 440,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "sg_tbl_dev",
+    "type": "ui-table",
+    "z": "sg_tab001",
+    "group": "sg_grp_dev",
+    "name": "таблица устройств",
+    "label": "",
+    "order": 1,
+    "width": 12,
+    "height": 0,
+    "maxrows": 0,
+    "passthru": false,
+    "autocols": true,
+    "showSearch": false,
+    "deselect": true,
+    "selectionType": "none",
+    "action": "replace",
+    "className": "",
+    "mobileBreakpointType": "none",
+    "columns": [],
+    "x": 1020,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "sg_tbl_ldr",
+    "type": "ui-table",
+    "z": "sg_tab001",
+    "group": "sg_grp_ldr",
+    "name": "таблица лидеров",
+    "label": "",
+    "order": 1,
+    "width": 12,
+    "height": 0,
+    "maxrows": 0,
+    "passthru": false,
+    "autocols": true,
+    "showSearch": false,
+    "deselect": true,
+    "selectionType": "none",
+    "action": "replace",
+    "className": "",
+    "mobileBreakpointType": "none",
+    "columns": [],
+    "x": 1020,
+    "y": 200,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "sg_tbl_alrt",
+    "type": "ui-table",
+    "z": "sg_tab001",
+    "group": "sg_grp_alt",
+    "name": "таблица оповещений",
+    "label": "",
+    "order": 1,
+    "width": 12,
+    "height": 0,
+    "maxrows": 0,
+    "passthru": false,
+    "autocols": true,
+    "showSearch": false,
+    "deselect": true,
+    "selectionType": "none",
+    "action": "replace",
+    "className": "",
+    "mobileBreakpointType": "none",
+    "columns": [],
+    "x": 1020,
+    "y": 280,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "sg_tbl_sts",
+    "type": "ui-table",
+    "z": "sg_tab001",
+    "group": "sg_grp_sts",
+    "name": "таблица статистики",
+    "label": "",
+    "order": 1,
+    "width": 12,
+    "height": 0,
+    "maxrows": 0,
+    "passthru": false,
+    "autocols": true,
+    "showSearch": false,
+    "deselect": true,
+    "selectionType": "none",
+    "action": "replace",
+    "className": "",
+    "mobileBreakpointType": "none",
+    "columns": [],
+    "x": 1020,
+    "y": 360,
+    "wires": [
+      []
+    ]
+  }
+]
